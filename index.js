@@ -10,27 +10,9 @@ Mongoose.connect('mongodb://localhost/todos', {useMongoClient: true});
 var db = Mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 
-//models
-
-var todoSchema = Mongoose.Schema({
-    title: String,
-    order: Number,
-    completed: Boolean
-});
-
-todoSchema.methods.toJson = function () {
-    return {title: this.title, order: this.order, completed: this.completed};
-};
-
-var Todo = Mongoose.model("Todo", todoSchema);
-
-////
-
-var todos = {
-    1: {title: 'build an API', order: 1, completed: false},
-    2: {title: '?????', order: 2, completed: false},
-    3: {title: 'profit!', order: 3, completed: false}
-};
+//Models
+var Todo = require('./orm/todo');
+var Tag = require('./orm/tag');
 
 var todoResourceSchema = Joi.object({
     title: Joi.string(),
@@ -38,18 +20,6 @@ var todoResourceSchema = Joi.object({
     order: Joi.number().integer(),
     url: Joi.string()
 });
-
-var getTodo = function (id) {
-    if (!(id in todos)) {
-        return false;
-    }
-    return {
-        title: todos[id].title,
-        completed: todos[id].completed,
-        order: todos[id].order,
-        url: server.info.uri + '/todos/' + id
-    };
-};
 
 const server = new Hapi.Server();
 server.connection({
@@ -263,6 +233,109 @@ server.route({
             'hapi-swagger': {
                 responses: {
                     204: {description: 'Todo deleted'},
+                    404: {description: 'Todo not found'}
+                }
+            }
+        }
+    }
+});
+
+//new functionality
+
+//tags////
+
+//list all
+server.route({
+    method: 'GET',
+    path: '/tags/',
+    handler: function (request, reply) {
+        var result = [];
+        Tag.find(function (err, todos) {
+            if (todos.length === 0) {
+                reply({"status": "There are no tags"}).code(200);
+            } else {
+                for (var t in todos) {
+                    result.push(todos[t].toJson());
+                }
+                reply(result).code(200);
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'List all tags',
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    200: {
+                        description: 'Success',
+                        schema: Joi.array().items(
+                            todoResourceSchema.label('Result')
+                        )
+                    }
+                }
+            }
+        }
+    }
+});
+
+//create tag
+server.route({
+    method: 'POST',
+    path: '/tags/',
+    handler: function (request, reply) {
+        new Tag(request.payload).save(function (err, newTag) {
+            if (err) {
+                reply(err).code(500);
+            } else {
+                reply(newTag.toJson()).code(200);
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'Create a todo',
+        validate: {
+            payload: {
+                name: Joi.string().required()
+            }
+        },
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    201: {
+                        description: 'Created',
+                        schema: todoResourceSchema.label('Result')
+                    }
+                }
+            }
+        }
+    }
+});
+
+//get one tag
+server.route({
+    method: 'GET',
+    path: '/tags/{tag_id}',
+    handler: function (request, reply) {
+        Tag.findOne({_id: request.params.tag_id}, function (err, tag) {
+            if (err) {
+                reply({"error": "Tag id not found"}).code(500);
+            } else {
+                reply(tag.toJson()).code(200);
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'Fetch a given todo',
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    200: {
+                        description: 'Success',
+                        schema: todoResourceSchema.label('Result')
+                    },
                     404: {description: 'Todo not found'}
                 }
             }

@@ -1,17 +1,10 @@
-var mongoose = require('mongoose');
+const Mongoose = require('mongoose');
 
-var todoSchema = mongoose.Schema({
-    title: String,
-    order: Number,
-    completed: Boolean
-});
-
-var conn;
-
-var Todo = mongoose.model("Todo", todoSchema);
+var Todo = require('./orm/todo');
 
 function dbCreationAndInit() {
-    var db = getDbConnection();
+    Mongoose.connect('mongodb://localhost/todos', {useMongoClient: true});
+    var db = Mongoose.connection;
 
     db.on('error', console.error.bind(console, 'connection error:'));
     db.once('open', function () {
@@ -26,18 +19,7 @@ function dbCreationAndInit() {
     });
 }
 
-function getDbConnection() {
-    if (!conn) {
-        mongoose.connect('mongodb://localhost/todos', {useMongoClient: true});
-        conn = mongoose.connection;
-    }
-
-    return conn;
-}
-
 module.exports = {
-    Todo: Todo,
-    create: dbCreationAndInit(),
-    dbCon: getDbConnection()
+    create: dbCreationAndInit()
 };
 
