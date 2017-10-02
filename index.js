@@ -3,6 +3,28 @@ const Inert = require('inert');
 const Vision = require('vision');
 const HapiSwagger = require('hapi-swagger');
 const Joi = require('joi');
+const Mongoose = require('mongoose');
+
+///db
+Mongoose.connect('mongodb://localhost/todos', {useMongoClient: true});
+var db = Mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+
+//models
+
+var todoSchema = Mongoose.Schema({
+    title: String,
+    order: Number,
+    completed: Boolean
+});
+
+todoSchema.methods.toJson = function() {
+    return {title: this.title, order: this.order, completed: this.completed};
+};
+
+var Todo = Mongoose.model("Todo", todoSchema);
+
+////
 
 var todos = {
     1: {title: 'build an API', order: 1, completed: false},
@@ -23,13 +45,12 @@ var todoIdSchema = Joi.number().integer().positive()
 
 var getTodo = function (id) {
     if( !(id in todos)) { return false; }
-    var result = {
+    return {
         title: todos[id].title,
         completed: todos[id].completed,
         order: todos[id].order,
         url: server.info.uri + '/todos/' + id
-    }
-    return result;
+    };
 };
 
 const server = new Hapi.Server();
@@ -52,7 +73,7 @@ const swaggerOptions = {
             name: 'todos'
         }
     ]
-}
+};
 
 server.register([
     Inert,
@@ -68,10 +89,12 @@ server.route({
     path: '/todos/',
     handler: function (request, reply) {
         var result = [];
-        for(var key in todos) {
-            result.push(getTodo(key));
-        }
-        reply(result).code(200);
+        Todo.find(function (err, todos) {
+            for(var t in todos){
+                result.push(todos[t].toJson());
+            }
+            reply(result).code(200);
+        });
     },
     config: {
         tags: ['api'],
@@ -91,7 +114,9 @@ server.route({
     method: 'DELETE',
     path: '/todos/',
     handler: function (request, reply) {
-        todos = {};
+        Todo.remove({}, function (err) {
+            reply(err);
+        });
         reply();
     },
     config: {
@@ -103,6 +128,7 @@ server.route({
     }
 });
 
+//TODO
 server.route({
     method: 'POST',
     path: '/todos/',
@@ -111,7 +137,7 @@ server.route({
             title: request.payload.title,
             order: request.payload.order || 0,
             completed: request.payload.completed || false
-        }
+        };
         nextId++;
         reply(getTodo(nextId - 1)).code(201);
     },
