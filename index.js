@@ -146,7 +146,7 @@ server.route({
 
         Todo.findOne({_id: request.params.todo_id}, function (err, todo) {
             if (err) {
-                reply({"error": "Todo id not found"}).code(500);
+                reply({"error": "Todo id not found"}).code(404);
             } else {
                 reply(todo.toJson()).code(200);
             }
@@ -183,7 +183,7 @@ server.route({
             },
             function (err, todo) {
                 if (err) {
-                    reply({"error": "Todo id not found"}).code(500);
+                    reply({"error": "Todo id not found"}).code(404);
                 } else {
                     reply(todo).code(200);
                 }
@@ -217,8 +217,8 @@ server.route({
     method: 'DELETE',
     path: '/todos/{todo_id}',
     handler: function (request, reply) {
-        Todo.findByIdAndRemove(request.params.todo_id, function(err, todo){
-            if(err){
+        Todo.findByIdAndRemove(request.params.todo_id, function (err, todo) {
+            if (err) {
                 reply('Todo Not Found').code(404);
             } else {
                 reply(todo).code(204)
@@ -320,7 +320,7 @@ server.route({
     handler: function (request, reply) {
         Tag.findOne({_id: request.params.tag_id}, function (err, tag) {
             if (err) {
-                reply({"error": "Tag id not found"}).code(500);
+                reply({"error": "Tag id not found"}).code(404);
             } else {
                 reply(tag.toJson()).code(200);
             }
@@ -343,7 +343,48 @@ server.route({
     }
 });
 
-server.start((err) => {
+//update one tag
+server.route({
+    method: 'PATCH',
+    path: '/tags/{tag_id}',
+    handler: function (request, reply) {
+        Tag.update({_id: request.params.tag_id}, {
+                $set: {
+                    name: request.payload.name || tag.name
+                }
+            },
+            function (err, tag) {
+                if (err) {
+                    reply({"error": "Tag id not found"}).code(404);
+                } else {
+                    reply(tag).code(200);
+                }
+            })
+    },
+    config: {
+        tags: ['api'],
+        description: 'Update a given Tag',
+        validate: {
+            payload: {
+                name: Joi.string()
+            }
+        },
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    200: {
+                        description: 'Success',
+                        schema: todoResourceSchema.label('Result')
+                    },
+                    404: {description: 'Tag not found'}
+                }
+            }
+        }
+    }
+});
+
+//delete one tag
+
+server.start(function (err) {
     console.log('Server running at:', server.info.uri);
-})
-;
+});
