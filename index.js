@@ -512,11 +512,11 @@ server.route({
     method: 'DELETE',
     path: '/tags/{tag_id}',
     handler: function (request, reply) {
-        Tag.findByIdAndRemove(request.params.tag_id, function (err, todo) {
+        Tag.findByIdAndRemove(request.params.tag_id, function (err, tag) {
             if (err) {
                 reply('Tag Not Found').code(404);
             } else {
-                reply(todo).code(204)
+                reply(tag).code(204)
             }
         });
     },
