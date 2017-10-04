@@ -57,24 +57,43 @@ server.route({
     path: '/todos/',
     handler: function (request, reply) {
         var result = [];
-        Todo.find(function (err, todos) {
-            for (var t in todos) {
-                result.push(todos[t].toJson());
-            }
-            reply(result).code(200);
-        });
+        if ("tag" in request.query) {
+            Todo.find({"tags": request.query.tag}, function (err, todos) {
+                if (err) {
+                    reply({'error': "Nothing found"}).code(404);
+                } else {
+                    for (var t in todos) {
+                        result.push(todos[t].toJson());
+                    }
+                    reply(result).code(200);
+                }
+            })
+        } else {
+            Todo.find(function (err, todos) {
+                if (err) {
+                    reply({"error": "Todo not found"}).code(404);
+                } else {
+                    for (var t in todos) {
+                        result.push(todos[t].toJson());
+                    }
+                    reply(result).code(200);
+                }
+            });
+        }
     },
     config: {
         tags: ['api'],
-        description: 'List all todos',
+        description:
+            'List all todos',
         plugins: {
             'hapi-swagger': {
                 responses: {
                     200: {
                         description: 'Success',
-                        schema: Joi.array().items(
-                            todoResourceSchema.label('Result')
-                        )
+                        schema:
+                            Joi.array().items(
+                                todoResourceSchema.label('Result')
+                            )
                     }
                 }
             }
@@ -240,10 +259,115 @@ server.route({
     }
 });
 
-//new functionality
+//new functionality////////
+//get all tags of a todo
 
-//tags////
+server.route({
+    method: 'GET',
+    path: '/todos/{todo_id}/tags/',
+    handler: function (request, reply) {
 
+        Todo.findOne({_id: request.params.todo_id}, function (err, todo) {
+            if (err) {
+                reply({"error": "Todo id not found"}).code(404);
+            } else {
+                reply(todo.tags).code(200);
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'Fetch a given todo and returns its tags',
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    200: {
+                        description: 'Success',
+                        schema: todoResourceSchema.label('Result')
+                    },
+                    404: {description: 'Todo not found'}
+                }
+            }
+        }
+    }
+});
+
+//tag a todo
+server.route({
+    method: 'POST',
+    path: '/todos/{todo_id}/tags/',
+    handler: function (request, reply) {
+        Todo.findById(request.params.todo_id, function (err, todo) {
+            if (err) {
+                reply({"error": "todo not found"}).code(404);
+            } else {
+                todo.tags.push(request.payload.id);
+                todo.save(function (err, todo) {
+                    if (err) {
+                        reply({"error": "tag cound not be saved"}).code(500);
+                    } else {
+                        reply(todo).code(200);
+                    }
+                });
+
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'Tags a todo',
+        validate: {
+            payload: {
+                id: Joi.string().required()
+            }
+        },
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    201: {
+                        description: 'Created',
+                        schema: todoResourceSchema.label('Result')
+                    }
+                }
+            }
+        }
+    }
+});
+
+//remove a tag from a todo
+server.route({
+    method: 'DELETE',
+    path: '/todos/{todo_id}/tags/{tag_id}',
+    handler: function (request, reply) {
+        Todo.findById(request.params.todo_id, function (err, todo) {
+            if (err) {
+                reply({"error": "Todo not found"}).code(404);
+            } else {
+                todo.tags.splice(todo.tags.indexOf(request.params.tag_id), 1);
+                todo.save(function (err, todo) {
+                    if (err) {
+                        reply({"error": "tag cound not be saved"}).code(500);
+                    } else {
+                        reply(todo).code(200);
+                    }
+                });
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'Removes a tag from a todo',
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    204: {description: 'Todo deleted'}
+                }
+            }
+        }
+    }
+});
+
+//tags////////
 //list all
 server.route({
     method: 'GET',
