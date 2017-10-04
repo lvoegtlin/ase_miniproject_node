@@ -508,6 +508,39 @@ server.route({
 });
 
 //delete one tag
+server.route({
+    method: 'DELETE',
+    path: '/tags/{tag_id}',
+    handler: function (request, reply) {
+        Tag.findByIdAndRemove(request.params.tag_id, function (err, todo) {
+            if (err) {
+                reply('Tag Not Found').code(404);
+            } else {
+                reply(todo).code(204)
+            }
+        });
+    },
+    config: {
+        tags: ['api'],
+        description: 'Update a given Tag',
+        validate: {
+            payload: {
+                name: Joi.string()
+            }
+        },
+        plugins: {
+            'hapi-swagger': {
+                responses: {
+                    200: {
+                        description: 'Success',
+                        schema: todoResourceSchema.label('Result')
+                    },
+                    404: {description: 'Tag not found'}
+                }
+            }
+        }
+    }
+});
 
 server.start(function (err) {
     console.log('Server running at:', server.info.uri);
