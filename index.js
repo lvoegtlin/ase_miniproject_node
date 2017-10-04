@@ -522,18 +522,12 @@ server.route({
     },
     config: {
         tags: ['api'],
-        description: 'Update a given Tag',
-        validate: {
-            payload: {
-                name: Joi.string()
-            }
-        },
+        description: 'Delete a given Tag',
         plugins: {
             'hapi-swagger': {
                 responses: {
-                    200: {
-                        description: 'Success',
-                        schema: todoResourceSchema.label('Result')
+                    204: {
+                        description: 'Success'
                     },
                     404: {description: 'Tag not found'}
                 }
